@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Solaranlage</title>
+    <style>
+        body {
+            background: #252525;
+        }
+        input {
+            transform: scale(1.6);
+            padding: 20px 0;
+        }
+        label {
+            color: white;
+        }
+        .container {
+            margin-left: 80px;
+            width: fit-content;
+            height: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <label for="dimmSelect">Dimmer:</label>
+        <input type="range" min="0" max="100" id="dimmSelect" />
+    </div>
+    <div class="container">
+        <label for="angleSelect">Winkel:</label>
+        <input type="range" min="0" max="180" id="angleSelect" />
+    </div>
+    <canvas id="myChart" width="100" height="40" style="background: #434242"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js" integrity="sha512-QSkVNOCYLtj73J4hbmVoOV6KVZuMluZlioC+trLpewV8qMjsWqlIQvkn1KGX2StWvPMdWGBqim1xlC8krl1EKQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const data = {
+          labels: [],
+          datasets: [{
+            label: 'Spannung',
+            data: [],
+            fill: false,
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+          },
+          {
+            label: 'Dimm Faktor',
+            data: [],
+            fill: false,
+            borderColor: 'rgb(180,8,49)',
+            tension: 0.1
+          },
+              {
+            label: 'Winkel',
+            data: [],
+            fill: false,
+            borderColor: 'rgb(65,180,8)',
+            tension: 0.1
+          }
+          ]
+        };
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#fff'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#fff'
+                        }
+                    }
+                },
+            }
+        });
+
+        const dimmSelect = document.getElementById("dimmSelect");
+        const angleSelect = document.getElementById("angleSelect");
+        var dimmValue = 0;
+        var selectValue = 0;
+
+        function sendValues() {
+            fetch('/api/updateValues/' + dimmValue + '/' + selectValue)
+                .then(() => {});
+        }
+
+        dimmSelect.onchange = (e) => {
+            dimmValue = +e.target.value;
+            sendValues();
+        };
+        angleSelect.onchange = (e) => {
+            selectValue = +e.target.value;
+            sendValues();
+        }
+
+        setInterval(() => {
+            fetch('/api/getMeasurementData')
+                .then(res => res.json())
+                .then(json => {
+                    const results = json.results;
+                    myChart.data.labels = results.map(el => {
+                        const date = new Date(el.timestamp*1000);
+                        return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+                    });
+                    myChart.data.datasets[0].data = results.map(el => el.voltage);
+                    myChart.data.datasets[1].data = results.map(el => el.dimmFactor);
+                    myChart.data.datasets[2].data = results.map(el => el.angle);
+                    myChart.update();
+                })
+        }, 1500)
+    </script>
+</body>
+</html>
